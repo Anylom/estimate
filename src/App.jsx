@@ -1,17 +1,20 @@
 import './App.css';
+import { useState } from 'react';
 
 function App() {
-
-  const FileCheck = () => {
-    const fileInput = document.getElementById('txt');
-    const file = fileInput.files[0];
+    const [file, setFile] = useState(null);
+    const [score, setScore] = useState('');
+    const [questions, setQuestions] = useState([]);
     
-    if (file) {
-      readFileAsObject(file);
-    } else {
-      alert('Пожалуйста, выберите файл для загрузки.');
-    }
-  };
+    const FileCheck = (event) => {
+        const selectedFile = event.target.files[0];
+        if (selectedFile) {
+            setFile(selectedFile); // Сохранение выбранного файла в состоянии
+            readFileAsObject(selectedFile);
+        } else {
+            alert('Пожалуйста, выберите файл для загрузки.');
+        }   
+    };
 
   function readFileAsObject(file) {
     const reader = new FileReader();
@@ -19,29 +22,33 @@ function App() {
         const content = reader.result;
         try {
             const testData = parseContent(content);
-            // console.log(JSON.stringify(testData, null, 2)); 
 
             let mistakes = 0;// Переменная для подсчета ошибок
             let count = 0; // Общее число вопросов для проверки работы
+            const result = [];
 
-            // Перебор тестовых данных
-            for (const questionNumber in testData.Тест.Тестовые_данные) {
-                const studentAnswer = testData.Тест.Тестовые_данные[questionNumber].ответ; // Ответ студента
-                const correctAnswer = testData.Тест.Ответы_на_тест[questionNumber].ответ; // Правильный ответ
-                
-                const StudentAnswerLower = typeof studentAnswer === 'string' ? studentAnswer.toLowerCase() : '';
-                const CorrectAnswerLower = typeof correctAnswer === 'string' ? correctAnswer.toLowerCase() : '';
-                count +=1;
+            // Перебор данных
+            for (const questionNumber in testData.Test.test_data) {
+                const studentAnswer = testData.Test.test_data[questionNumber]?.answ; 
+                const correctAnswer = testData.Test.test_answers[questionNumber]?.answ; 
+                const questionText = testData.Test.test_data[questionNumber]?.question;
 
-                // Сравнение ответов
+                result.push({ questionText, correctAnswer, studentAnswer });
+                count++;
+
+                const StudentAnswerLower = (typeof studentAnswer === 'string') ? studentAnswer.toLowerCase() : '';
+                const CorrectAnswerLower = (typeof correctAnswer === 'string') ? correctAnswer.toLowerCase() : '';
+
                 if (StudentAnswerLower !== CorrectAnswerLower) {
-                    mistakes += 1; 
+                    mistakes++;
                 }
             }
+            setQuestions(result); 
+
             const score = Math.ceil((count-mistakes)/count*5);
-            document.getElementById("score").innerHTML = "Оценка: " + score;
-            console.log(`Количество ошибок: ${mistakes}/${count}`);
-            console.log(`Оценка: ${score}`);
+            setScore("Оценка: " + score);
+            // console.log(`Количество ошибок: ${mistakes}/${count}`);
+            // console.log(`Оценка: ${score}`);
         } catch (error) {
             console.error('Ошибка при парсинге файла:', error);
             alert('Произошла ошибка при обработке файла. Пожалуйста, проверьте формат.');
@@ -53,15 +60,15 @@ function App() {
         alert('Произошла ошибка при чтении файла.');
     };
     
-    reader.readAsText(file);
+    reader.readAsText(file, 'windows-1251');
 }
 
   function parseContent(content) {
     const lines = content.split('\n');
     const result = {
-        Тест: {
-            Тестовые_данные: {}, // контейнер для тестовых данных
-            Ответы_на_тест: {} // контейнер для ответов на тест
+        Test: {
+            test_data: {}, // контейнер для тестовых данных
+            test_answers : {} // контейнер для ответов на тест
         }
     };
 
@@ -70,8 +77,6 @@ function App() {
     
     for (const line of lines) {
         const trimmedLine = line.trim();
-        // console.log(trimmedLine); // Для отладки
-
         
         if (trimmedLine.toLowerCase().startsWith("answer test")) {
             isAnswerTest = true;
@@ -79,7 +84,7 @@ function App() {
         }
    
         const questionMatch = trimmedLine.match(/(\d+)\.\s*(.+)/);
-        const answerMatch = trimmedLine.match(/Answer:\s*(\w)/);
+        const answerMatch = trimmedLine.match(/Answer:\s*(.+)/);
         
         if (questionMatch) {
             currentQuestionNumber = questionMatch[1]; // Получаем номер вопроса
@@ -88,13 +93,13 @@ function App() {
             // Сохраняем вопрос в нужной структуре
             if (!isAnswerTest) {
                 // Секция тестовых данных
-                result.Тест.Тестовые_данные[currentQuestionNumber] = {
-                    вопрос: questionText
+                result.Test.test_data[currentQuestionNumber] = {
+                    question: questionText
                 };
             } else {
                 // Секция ответов на тест
-                result.Тест.Ответы_на_тест[currentQuestionNumber] = {
-                    вопрос: questionText
+                result.Test.test_answers[currentQuestionNumber] = {
+                    question: questionText
                 };
             }
         }
@@ -103,12 +108,12 @@ function App() {
             const answer = answerMatch[1];
 
             if (!isAnswerTest) {
-                if (result.Тест.Тестовые_данные[currentQuestionNumber]) {
-                    result.Тест.Тестовые_данные[currentQuestionNumber].ответ = answer; 
+                if (result.Test.test_data[currentQuestionNumber]) {
+                    result.Test.test_data[currentQuestionNumber].answ = answer; 
                 }
             } else {
-                if (result.Тест.Ответы_на_тест[currentQuestionNumber]) {
-                    result.Тест.Ответы_на_тест[currentQuestionNumber].ответ = answer; 
+                if (result.Test.test_answers[currentQuestionNumber]) {
+                    result.Test.test_answers[currentQuestionNumber].answ = answer; 
                 }
             }
         }
@@ -119,14 +124,20 @@ function App() {
 
   return (
     <>
-      <label htmlFor="txt">Загрузите файл</label>
-      <input type="file" id="txt" accept=".txt, .doc" />
-
-      <button onClick={FileCheck}>Проверить</button>
-      <div id="score"></div>
+        <label htmlFor="txt">Загрузите файл  </label>
+        <input type="file" id="txt" accept=".txt, .doc" onChange={FileCheck} />
+        <div>
+            {questions.map(({ questionText, correctAnswer, studentAnswer }, index) => (
+                <div key={index}>
+                    <p>{index+1} . {questionText}</p>
+                    <p>Правильный ответ: {correctAnswer || 'Не указан'}</p>
+                    <p>Ваш ответ: {studentAnswer || 'Не указан'}</p>
+                </div>
+            ))}
+        </div>
+        <div>{score}</div>
     </>
   );
 }
 
 export default App;
-
