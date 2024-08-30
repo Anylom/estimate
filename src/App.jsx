@@ -33,15 +33,17 @@ function App() {
                 const correctAnswer = testData.Test.test_answers[questionNumber]?.answ; 
                 const questionText = testData.Test.test_data[questionNumber]?.question;
 
-                result.push({ questionText, correctAnswer, studentAnswer });
+                const StudentAnswerLower = (typeof studentAnswer === 'string') ? studentAnswer.toLowerCase() : '';
+                const CorrectAnswerLower = (typeof correctAnswer === 'string') ? correctAnswer.toLowerCase() : '';                
+                
+                const isCorrect = StudentAnswerLower === CorrectAnswerLower;
+                if (!isCorrect) {
+                    mistakes++;
+                }   
+
+                result.push({ questionText, correctAnswer, studentAnswer, isCorrect });
                 count++;
 
-                const StudentAnswerLower = (typeof studentAnswer === 'string') ? studentAnswer.toLowerCase() : '';
-                const CorrectAnswerLower = (typeof correctAnswer === 'string') ? correctAnswer.toLowerCase() : '';
-
-                if (StudentAnswerLower !== CorrectAnswerLower) {
-                    mistakes++;
-                }
             }
             setQuestions(result); 
 
@@ -127,11 +129,11 @@ function App() {
         <label htmlFor="txt">Загрузите файл  </label>
         <input type="file" id="txt" accept=".txt, .doc" onChange={FileCheck} />
         <div>
-            {questions.map(({ questionText, correctAnswer, studentAnswer }, index) => (
+            {questions.map(({ questionText, studentAnswer, correctAnswer, isCorrect }, index) => (
                 <div key={index}>
-                    <p>{index+1} . {questionText}</p>
-                    <p>Правильный ответ: {correctAnswer || 'Не указан'}</p>
-                    <p>Ваш ответ: {studentAnswer || 'Не указан'}</p>
+                    <p><strong>{index + 1}. {questionText}</strong></p>
+                    <p style={{ color: isCorrect ? 'green' : 'red' }}>Ваш ответ: {studentAnswer || 'Не указан'}</p>
+                    {!isCorrect && correctAnswer && <p style={{ color: 'green' }}>Правильный ответ: {correctAnswer}</p>}
                 </div>
             ))}
         </div>
